@@ -1,0 +1,406 @@
+<!--#SDK-->
+<s-template>
+
+
+
+
+
+<v-dialog v-model="show" persistent fullscreen hide-overlay transition="dialog-bottom-transition" scrollable>
+  <v-card>
+    <v-card-title class="headline primary" >
+      <s-toolbar-modal   
+          titulo = "Modificadores de productos"
+          :id = "id"
+          :url = "baseURL" 
+          :esNuevo="isNew"
+          :estatus="registroActual.estatus=true"
+          :permiso="permiso"
+          @cerrar = "onClose()"
+          @guardar = "Guardar()" 
+          @eliminar = "Eliminar()" /> 
+    </v-card-title> 
+    <v-card-text>
+ 			<v-container fluid>
+        <v-form ref="form" v-model="form">
+          <v-row>
+          	<v-col>
+              <v-text-field
+                    label="Nombre"
+                    dense
+                    v-model="registroActual.nombre"
+                    required
+										:rules="inputRules"
+                    persistent-hint />
+              <v-select  
+                    label="Tipo"
+                    dense
+                    required
+                    :rules="inputRules"
+                  	:items="tiposLista"
+                    item-text="nombre"
+                    item-value= "valor"
+                    v-model="registroActual.tipo"
+                    />
+          	</v-col>
+          	<v-col>
+               <v-text-field 
+                    v-if="isNew"
+                    label="Color"
+                    dense
+                    @input = "colorP"
+                    v-model="colorP"
+                    @click="mostrarPaletaDeColores = true"
+                    persistent-hint />
+              <v-color-picker
+                style="position: absolute; top: 20%; left: 80; z-index: 500; width: 300px; height: 300px;border: 2px solid #cccc;"
+                v-model="colorP"
+                v-if="mostrarPaletaDeColores && isNew"
+      					v-click-outside="cerrarPaletaPrincipal"
+                :show-swatches="false"
+                :show-canvas="false"
+                :show-input="false"
+                :hide-inputs="true"
+              ></v-color-picker>
+              
+              <v-text-field 
+                    v-if="!isNew"
+                    label="Color"
+                    dense
+                    @input = "registroActual.color"
+                    v-model="registroActual.color"
+                    @click="mostrarPaletaDeColores = true"
+                    persistent-hint /> 
+              
+              <v-color-picker
+                style="position: absolute; top: 20%; left: 80; z-index: 500; width: 300px; height: 300px;"
+                v-model="registroActual.color"
+                v-if="mostrarPaletaDeColores && !isNew"
+      					v-click-outside="cerrarPaletaPrincipal"
+                :show-swatches="false"
+                :show-canvas="false"
+                :show-input="false"
+                :hide-inputs="true"
+              ></v-color-picker>
+              <v-text-field  
+                    label="ícono"
+                    dense
+                    v-model="registroActual.icono"
+                    persistent-hint /> 
+          	</v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="12">
+            	<v-data-table
+                :headers="indexHeader"
+                :items="items"
+                item-key="id"  
+                class="elevation-1" > 
+                <template  v-slot:item.nombre="{ item }">
+                	<v-text-field    
+                      dense
+                      v-model="item.nombre"
+                      required
+                      :rules="inputRules"
+                      outlined
+                      hide-details
+                      class="caption" />
+                </template>
+                <template v-slot:item.tipo="{ item }">
+                  	<v-text-field
+                      dense
+                      dir="rtl"
+                      v-model="item.valor"
+                      required
+                      :rules="inputRules"
+                      class="caption"
+                      type="number"
+                      outlined
+                      hide-details
+                      v-if="registroActual.tipo === 1"
+   
+                    ></v-text-field>
+                    <v-text-field
+                      dense
+                      v-model="item.valor"
+                      required
+                      :rules="inputRules"
+                      class="caption"
+                      type="date"
+                      outlined
+                      hide-details
+                      v-else-if="registroActual.tipo === 2"
+                    
+                    ></v-text-field>
+    								<v-text-field
+                      dense
+                      type="text"
+                      v-model="item.valor"
+                      required
+                      :rules="inputRules"
+                      class="caption"
+                      outlined
+                      hide-details
+                      v-else="registroActual.tipo === 3"
+                      
+                    ></v-text-field>
+                </template>
+                <template  v-slot:item.actions="{ item }">
+                  <v-icon @click="eliminarPropiedad(item)">
+                    mdi-delete
+                  </v-icon>
+                  <v-icon @click="iconoPropiedad(item)">
+                    mdi-image-album
+                  </v-icon>
+                  <input ref="fileInput" type="file" style="display:none" @change="onFileSelected" />
+                  
+                  <v-icon :style="{ color: item.color }" @click="colorPropiedad(item)" :color= "selectedColor.color">
+                     mdi-palette
+                  </v-icon>
+                  	<v-col>
+                        <div style="position: absolute;">
+                          <v-color-picker
+                            v-if="activadorColor && item.id === selectedItemId"
+                            v-model="item.color"
+                            v-click-outside="cerrarPaletaDeColores"
+                            style="position: absolute; top: 100%; left: 0; z-index: 999; width: 200px; height: 200px; border: 2px solid #cccc;"
+                          ></v-color-picker>
+                        </div>                     
+                    </v-col>
+                </template>
+                	
+                <template v-slot:body.append>
+                    <v-btn text @click="nuevaPropiedad()"  >
+                      <v-icon title="Nueva propiedad">mdi-playlist-plus</v-icon>
+                    </v-btn>
+                </template>
+              </v-data-table>
+            </v-col>
+          </v-row>
+        </v-form>
+      </v-container>
+    </v-card-text>
+  </v-card>
+</v-dialog>
+
+
+
+</s-template>
+<!--#SDK-->
+<script>
+
+
+
+props:[ 
+	'show',
+  'id',
+  'isNew',
+  'empresa_id',
+  'permiso'
+],
+data: () => ({
+    baseURL:"/catalogo_general",
+    registroActual:{
+   			detalles:[],
+      	color:''
+    },
+  	items:[{nombre:'',valor:'',color:{},icono:''}],
+  	fecha:'',
+  	iconoValor: null,
+  	activadorColor:false,
+    actualizarDetalles:[],
+  	selectedItemId:null,
+    mostrarPaletaDeColores: false,
+  	seleccionarImagen:false,
+  	selectedColor:{},
+    form:true,
+  	color: '#ff00ff',
+		colorP: '#ff00ff',
+    mode: 'hsla',
+    modes: ['hsla'],
+  	tiposLista:[{nombre:'Número', valor:1},{nombre:'Fecha',valor:2},{nombre:'Cadena',valor:3}],
+		modificador_configuracion:[],
+    inputRules: [
+      v => !!v || "Este campo es requerido"
+    ],
+    indexHeader: [
+      { text: 'Nombre',align: 'center', value: 'nombre', class:'primary white--text',width:150 }, 
+      { text: 'Valor', align: 'center',value: 'tipo', class:'primary white--text',width:150 },
+      { text: 'Opciones', align: 'center', value: 'actions', class:'primary white--text',width:50}
+    ],
+}),
+  beforeMount() { 
+  }, 
+  mounted() {
+     
+  },
+  methods: {
+    
+    onClose(){
+      this.$emit('close');
+      this.registroActual={};
+    },
+
+    Guardar(){
+
+      	for (let i = 0; i < this.items.length; i++) {
+            this.items[i].icono = this.iconoValor;
+          
+            if(!this.items[i].nombre){
+              swal.fire({ icon: "warning", title: "Nombre", text: "Debe especificar un nombre" });
+              return;
+            }
+          	if(!this.items[i].valor){
+              swal.fire({ icon: "warning", title: "Valor", text: "Debe especificar un valor" });
+              return;
+            }
+				}
+      
+      	if(!this.registroActual.nombre){
+              swal.fire({ icon: "warning", title: "Nombre", text: "Debe especificar un nombre" });
+              return;
+        }
+      
+      	if(!this.registroActual.tipo){
+              swal.fire({ icon: "warning", title: "Tipo", text: "Debe especificar el tipo" });
+              return;
+        }
+      
+				this.registroActual.detalles=this.items;
+        if (this.isNew) {
+          this.registroActual.color=this.colorP;
+          axios
+            .post(this.URL(this.baseURL),this.registroActual)
+            .then(response => {
+            		this.$emit('add',response.data);
+                this.$emit('close');
+                this.registroActual = {};
+            })
+            .catch(this.MSGBOX);
+
+        } else {
+          axios
+           .put(this.URL(this.baseURL + '/' + this.id),this.registroActual)
+            .then(response => {
+            	this.$emit('update',response.data.id);
+              this.$emit('close');   
+            	this.registroActual = {};
+            })
+            .catch(this.MSGBOX);
+        }
+      }, 
+
+      Eliminar() {
+
+          axios
+          .delete(this.URL(this.baseURL + '/' + this.id))
+          .then(response => {
+               this.$emit('delete',response.data);
+          })
+          .catch(this.MSGBOX);
+
+      },
+      
+      getRegistro(){
+
+        axios
+          .get(this.URL(this.baseURL + '/' + this.id)) 
+          .then(response => {
+            this.registroActual = response.data;
+          	//console.log(response.data);
+          	this.items = this.registroActual.detalles;
+          })
+          .catch(this.MSGBOX);
+      },
+      
+      nuevaPropiedad() {
+          this.items.push ({
+            nombre:'',
+            valor:'',
+            color:'',
+            icono:''
+          })
+    			
+    	},
+      
+      eliminarPropiedad(item) {
+        
+        let ix = this.items.indexOf(item);
+        this.items.splice(ix,1);
+        
+      },
+
+     colorPropiedad(item) {
+        this.selectedItemId = item.id;
+        this.activadorColor = true;
+        this.selectedColor.color = item.color;
+        item.estiloIcono = { color: item.color };
+      },
+
+    	cerrarPaletaDeColores() {
+      	this.activadorColor = false;
+ 
+    	},
+      
+      cerrarPaletaPrincipal(){
+        this.mostrarPaletaDeColores = false;
+      },
+        
+      iconoPropiedad(item) {
+        this.$refs.fileInput.click();
+      },
+      
+      onFileSelected(event) {
+        const file = event.target.files[0];
+        console.log(file);
+        let reader = new FileReader();
+      	reader.onload = (event) => {
+        	this.iconoValor = file.name;
+      	};
+      	reader.readAsDataURL(file);
+    		
+      },
+      
+      updatefecha(val){
+				this.fecha = val;
+  		}
+ 
+  },
+
+  
+watch: {
+	show : function (){
+      if (!this.show) return;
+  			 
+      if (!this.isNew ) {
+        this.getRegistro();
+      }
+    
+      this.registroActual = {};
+    	this.items = [];
+  },
+  
+}
+
+
+
+
+
+
+</script>
+<!--#SDK-->
+<style>
+
+
+
+
+
+
+
+null
+
+
+
+
+
+
+</style><!--#SDK-->
