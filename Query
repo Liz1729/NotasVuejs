@@ -1,0 +1,470 @@
+<!--#SDK-->
+<s-template>
+
+
+
+<div>
+    <v-dialog v-model="show" persistent fullscreen hide-overlay transition="dialog-bottom-transition" scrollable>
+      <v-card>
+        <v-card-title class="headline primary">
+          <s-toolbar-modal
+            titulo = "Consulta"
+            :id = "id"
+            :url = "baseURL"
+            :esNuevo = "isNew"  
+            :estatus="registroActual.estatus"
+            :permiso = "permiso"
+            imprimir
+            exportar 
+            enviar
+            @cerrar = "onClose()"
+            @guardar = "Guardar()" 
+            @eliminar = "Eliminar()"
+          /> 
+        </v-card-title>
+        <br>
+        <template>
+          <v-card-text>
+            <v-container fluid>
+              <v-form ref="form" dense>
+           		  <v-col cols="12" xs="12" sm="12" md="6" lg="6" xl="6">
+                  <v-row>
+                    <v-text-field
+                    required 
+                    label="Nombre"  
+                    dense 
+                    persistent-hint 
+                    v-model="registroActual.nombre"
+										>
+                    </v-text-field>
+                  </v-row>
+                </v-col>
+              	<v-col cols="12" xs="12" sm="12" md="12" lg="12" xl="12">
+                  <v-row>
+                    <textarea
+                      ref="editor"
+                      id="editor"
+                      label="Consulta"
+                      dense
+                      persistent-hind
+                      auto-grow
+                      v-model="registroActual.json"
+										>
+                    </textarea>
+                  </v-row>
+                </v-col>
+              </v-form>
+            </v-container>
+          </v-card-text>
+        </template>
+      </v-card>         
+    </v-dialog>
+  </div>
+
+
+
+</s-template>
+<!--#SDK-->
+<script>
+
+
+props:[ 
+	'show',
+	'id',
+	'isNew',
+  'permiso'
+],
+data: () => ({
+  //url base
+	baseURL: "/consultas_json",
+	onMobile: false, 
+	registroActual:{},
+	nombre: ' ', 
+	categorias:[],
+	productos:[],
+	items:[],
+  alto:0,
+  largo:0,
+	token:'',
+	filtro:'',
+  objEditor:null,
+  editor:null,
+  modeEditor: 'javascript',
+	inputRules: [
+		v => !!v || "Este campo es requerido",
+	],
+	valor: [val => (val || '').length > 0 || 'Requerido'],
+	phoneRules: [
+		v => !!v || "Este campo es requerido",
+		v =>
+		(v && v.length <= 10 && v.length >= 10) ||
+		"Debe contener al menos 10 caracteres"
+	]
+
+}),
+ 
+mounted() {
+	this.token = sessionStorage.getItem('token');
+	this.onMobile = this.MOBILE();
+	this.rules = this.RULES();
+},
+  
+methods: {
+
+      initCodeMirror(){
+          const txta = this.$refs.editor;
+          var value2 = this.registroActual.json;
+          let fn = this.Guardar;
+          this.objEditor = CodeMirror.fromTextArea(txta, {
+            value: value2,
+            lineNumbers: true,
+            mode: this.modeEditor,
+            extraKeys: {
+              "Ctrl-Space": "autocomplete",
+              "F11": function(cm) {
+                cm.setOption("fullScreen", !cm.getOption("fullScreen"));
+              },
+              "Esc": function(cm) {
+                if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
+              },
+              "Ctrl-S": function(instance) { 
+                fn(); 
+              }, 
+            },      
+            fullScreen:false,
+            keyMap: "sublime",
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            showCursorWhenSelecting: true,
+            theme: "default",  
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+            tabSize: 2,
+            autofocus: true
+          });
+          //this.objEditor.setSize(1600, 600);    
+          this.objEditor.setSize(window.innerWidth,window.innerHeigth);
+      },
+  
+      getRegistro(){
+      axios
+        .get(this.URL(this.baseURL + '/' + this.id ))
+        .then(response => {
+            this.registroActual = response.data;
+            this.empresa_id = this.registroActual.empresa_id;
+            this.almacen_id = this.registroActual.almacen_id;
+            this.sucursal_id = this.registroActual.sucursal_id;
+            this.items = this.registroActual.detalles;
+        console.log(this.items,'items')
+        
+         }).catch(this.MSGBOX);
+      },
+        
+      Guardar(){
+          this.registroActual.json = this.objEditor.getValue();
+          this.registroActual.detalles = this.items;
+          if (this.isNew)
+          { 
+            axios
+            .post(this.URL(`${this.baseURL}`),this.registroActual)
+            .then(response => {
+              this.objEditor.toTextArea();
+              this.registroActual = {};
+              this.$emit('new',response.data.id);
+              this.$emit('close');
+            })
+            .catch(this.MSGBOX);
+          }else{
+            axios
+            .put(this.URL(`${this.baseURL}/${this.registroActual.id}`),this.registroActual)
+            .then(response => { 
+              this.objEditor.toTextArea();
+              this.registroActual = {};
+              this.$emit('update',response.data.id);
+              this.$emit('close');
+            })
+            .catch(this.MSGBOX);
+          }
+      },
+        
+      Eliminar() {   
+        axios
+        .delete(this.URL(this.baseURL + '/' + this.id))
+        .then(response => {
+             this.$emit('delete',response.data);
+        })
+        .catch(this.MSGBOX);
+      },	
+        
+      eliminarRegistro(){
+        this.$emit('delete');
+        this.$emit('close');
+        this.registroActual={};
+      },
+        
+      onClose(){
+        this.$emit('close');
+        this.registroActual={};
+        this.objEditor.toTextArea();
+      },
+        
+      getCategorias() {
+        this.categorias = [];
+        axios
+          .get(this.URL('/categorias'))
+          .then(response => {
+              this.categorias = response.data
+          
+          })
+        
+          .catch(this.MSGBOX);
+      },
+        
+      getAlmacenes() {
+        this.almacenes = [];
+        if (this.empresa_id == null ) return false;
+        axios
+          .get(this.URL('/almacenes','&empresa_id='+this.empresa_id))
+          .then(response => {
+              this.almacenes = response.data
+          })
+          .catch(this.MSGBOX);
+      },
+        
+      getEmpresas() {
+        axios
+          .get(this.URL('/empresas','&estatus=true'))
+          .then(response => {
+              this.empresas = response.data;
+              if (this.empresas.length>0){
+                this.empresa_id = this.empresas[0].id;
+              }
+          })
+          .catch(this.MSGBOX);
+      },
+        
+      getCentrosCosto() {
+          axios
+            .get(this.URL('/centros_costos','&estatus=true'))
+            .then(response => {
+                this.centroscosto = response.data;
+
+            })
+            .catch(this.MSGBOX);
+      },
+        
+      getProyectos() {
+          this.proyectos = [];
+          axios
+            .get(this.URL('proyectos'))
+            .then(response => {
+                this.proyectos = response.data
+            })
+            .catch(this.MSGBOX);
+      },	
+        
+      getSucursales() {
+        axios
+          .get(this.URL('/sucursales','&estatus=true'))
+          .then(response => {
+              this.sucursales = response.data;
+          })
+          .catch(this.MSGBOX);
+      },
+        
+      getCategorias() {
+        this.categorias = [];
+        axios
+          .get(this.URL('/categorias'))
+          .then(response => {
+              this.categorias = response.data
+          })
+          .catch(this.MSGBOX);
+      },
+        
+      getTiposMovimiento() {
+        axios
+          .get(this.URL('/tipos_movimiento_inventario','&estatus=true'))
+          .then(response => {
+              this.tipomovimiento = response.data;
+              console.log(this.tipomovimiento);
+          })
+          .catch(this.MSGBOX);
+      },
+        
+      onEnter(event) { 
+        if (event.keyCode != 13) return; 
+        	this.filtrarProducto();
+      },
+        
+      buscarProducto(){
+        this.productos = [];
+        this.showDialog = true;
+      },
+		
+      showDialogCatalogo(titulo,url,isNew,id){
+        if (url == 'tipo') { 
+            //console.log("revisando 'contactos' ");
+            this.registroActual.tipo_movimiento_inventario_id= id; 
+            this.isNewTipo = isNew;
+            this.showDialogTipoMovimiento = true;
+            return;
+        }
+      },
+		
+      descripcionProducto(v){
+         if (v.length > 30) {
+            return (v.substring(0,30) + '...');
+         } else {
+            return v;
+         }
+      },
+        
+      getProductos(categoria_id) {
+          let filtros = '&categoria_id=' + categoria_id;
+          filtros += '&inventariable=true';
+          axios
+            .get(this.URL('/productos/productos',filtros))
+            .then(response => {
+              let aProds = response.data;
+              for (let i = 0; i < aProds.length; i++) {
+                this.buscarPrecio(aProds[i]);
+              }
+              this.productos = aProds;
+            }).catch(this.MSGBOX);
+      },
+        
+      agregarProductos(prod) { 
+          let filtros = '&id=' + prod.id;
+          filtros += '&almacen_id=' + this.almacen_id;
+            axios
+            .get(this.URL('/productos/productos',filtros))
+            .then(response => {
+              let producto = response.data;
+              this.items.push(this.calculaImporte(producto,false,true,true)); 
+              this.showDialog =false;
+            }).catch(this.MSGBOX);			 
+      },
+        
+      onChange(value) {
+        this.items = value.map(i => i);
+      },	
+        
+      calculateImporte(){
+        t = 0;
+        this.items.forEach(e => {
+          t= t + parseFloat(e.importe);
+        });
+        this.registroActual.importe = t;
+      },
+        
+      borrarProducto(item){
+        let ix;
+        ix = this.items.indexOf(item); 
+        this.items.splice(ix,1); 
+      },
+        
+      buscarPrecio(e) {
+          if (e.cantidad == undefined) e.cantidad = 1;
+          if (e.precios == undefined) e.precios = [];
+          if (e.precios.length > 0 ) {
+            //validar unidad
+            for (let i = 0; i < e.precios.length; i++) {
+              //if (parseFloat(e.precios_venta[i].cantidad) == 1 ) {
+              if (e.cantidad >= parseFloat(e.precios[i].cantidad) &&
+                e.precios[i].unidad_id == e.unidad_id
+              ) {  
+              e.precio = parseFloat(e.precios[i].precio);
+              return;
+              }
+            }
+      		}
+          //si es grid de compra se sugiere como precio de compra, 
+          //el ultimo costo de compra
+          if (this.tipo_precio == 2 && e.ultimo_costo != undefined ) e.precio = e.ultimo_costo; 
+      },
+        
+      onUpdateTipo(){
+        this.showDialogTipoMovimiento = false;
+        this.getTiposMovimiento();
+        this.seleccionarTipoMovimiento();
+      },
+},
+  
+computed: {
+  dimension: function () {
+      return parseFloat(this.alto) * parseFloat(this.largo)
+  },
+      
+},
+  
+watch: {
+	show : function (){
+    
+    let intervalId;
+      if(this.show){
+        this.ver_formula = this.verFormula;
+        
+        Vue.nextTick().then(()=>{
+          this.initCodeMirror();
+        });
+        
+        if(this.isNew){
+          intervalId = setInterval(() => {
+              this.initCodeMirror();
+              clearInterval(intervalId);
+          });
+          this.registroActual = {};
+          this.empresa_id = 0;
+          this.almacen_id = 0;
+          this.sucursal_id = 0;
+          this.tipo_movimiento_inventario_id = 0;  
+          this.tipoSeleccionado = {};
+          this.items = [];
+          this.registroActual.fecha = this.FORMAT_FH(new Date(),'yyyy-mm-dd');
+				}else{
+          this.getRegistro();
+          if (this.registroActual.json) {
+            // Inicializa CodeMirror si el elemento está disponible
+            	this.initCodeMirror();
+          } else {
+            // Si el elemento aún no está disponible, espera a que lo esté
+              intervalId = setInterval(() => {
+                  if (this.registroActual.json) {
+                    this.initCodeMirror();
+                    clearInterval(intervalId);
+                    intervalId = null;
+                  }
+         			 });
+			  }
+    	
+     }
+    
+	 }
+  
+	},
+	empresa_id: function() {
+
+		if (this.empresa_id == undefined) {
+			this.almacenes = [];
+			return;
+		} 
+ 
+		this.getAlmacenes();
+		this.getSucursales();
+
+	},
+}
+
+
+</script>
+<!--#SDK-->
+<style>
+
+
+
+null
+
+
+
+</style><!--#SDK-->
