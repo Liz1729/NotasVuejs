@@ -1,0 +1,820 @@
+<!--#SDK-->
+<s-template>
+
+
+
+<v-dialog v-model="show" persistent width="900" hide-overlay transition="dialog-bottom-transition" scrollable>
+  <v-card>
+    <v-card-title class="headline primary">
+      <s-toolbar-modal   
+          titulo = "Configuración de nómina"
+          :id = "id"
+          :url = "baseURL"
+          :esNuevo = "isNew"  
+          :estatus="tabs.estatus" 
+          @cerrar = "onClose()"
+          @guardar = "Guardar()" 
+          @eliminar = "Eliminar()" 
+        /> 
+     
+     </v-card-title>
+    <v-card-text>
+		<!--lista de campos --->
+  <v-form ref="form" v-model="valid" lazy-validation>
+    <v-container>
+        <v-row>
+          <v-col> 
+             <template>
+               <v-tabs v-model="activeTab" center-active background-color="primary">
+                 <v-tab v-for="(tab, index) in tabs" :key="index" @click="setActiveTab(index)">
+                   <div v-if="tipo_nomina_nombre[index]!=null">
+                      {{ tipo_nomina_nombre[index]}}
+                    </div>
+                    <div v-else>
+                      Nueva Nomina
+                    </div>
+                    <v-icon small @click.stop="removeTab(index)">mdi-close</v-icon>
+                  </v-tab>
+                    <v-tabs-items v-model="activeTab" >
+                      <v-tab-item v-for="(tab, index) in tabs" :key="index">
+          						 <br>
+                          <v-container>
+                             <v-row>
+                               <v-col>
+                                  
+                                 <v-row>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-select  
+                                              dense
+                                              clearable
+                                              :rules="inputRules"
+                                              required
+                                              label="Empresa"
+                                              :items="empresas"
+                                              v-model="tab.empresa_id"
+                                              item-text="nombre" 
+                                              item-value="id"
+                                          />
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                                  <v-select  
+                                              dense
+                                              clearable
+                                              label="Tipo de nomina"
+                                              :items="tipo_nomina"
+                                              v-model="tab.tipo_nomina_id"
+                                              @click="removeOption()"
+                                              @change="updateSelection(index)"
+                                              item-text="nombre" 
+                                              item-value="id"
+                                          >
+                                          	<option v-for="(option, index) in tipo_nomina" :key="index" :value="option.value">{{ option.text }}</option>
+                                          </v-select>
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                      <v-text-field label="Registro patronal" :rules="campoRequerido" dense persistent-hint v-model="tab.registro_patronal"/>
+                                 	 </v-col>
+                                   
+                                 </v-row>
+                                 
+                                 <v-row>
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-menu min-width="auto" v-model="menuiFecha[index]" :close-on-content-click="false" transition="scale-transition">
+                                            <template v-slot:activator="{on}">
+                                              <v-text-field 
+                                                dense
+                                                clearable
+                                                :rules="inputRules"
+                                                required
+                                                v-model="tab.fecha_ingreso"  
+                                                label="Fecha de ingreso"
+                                                readonly
+                                                v-on="on"
+                                              />
+                                            </template>
+                                            <v-date-picker min-width="auto" v-model="tab.fecha_ingreso" no-title @input="menuiFecha[index]=false"/>
+                                          </v-menu> 
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                      <v-menu min-width="auto" v-model="menuaiFecha[index]" :close-on-content-click="false" transition="scale-transition" offset-y>
+                                            <template v-slot:activator="{on}">
+                                              <v-text-field 
+                                                :rules="campoRequerido"
+                                                dense
+                                                clearable 
+                                                v-model="tab.fecha_alta_imss"  
+                                                label="Fecha alta IMSS" 
+                                                readonly
+                                                v-on="on"/>
+                                            </template>
+                                            <v-date-picker min-width="auto" v-model="tab.fecha_alta_imss" no-title @input="menuaiFecha[index] = false" :disabled="!tab.fecha_ingreso" :min="tab.fecha_ingreso"/>
+                                          </v-menu>
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-menu min-width="auto" v-model="menubiFecha[index]" :close-on-content-click="false" transition="scale-transition">
+                                            <template v-slot:activator="{on}">
+                                              <v-text-field
+                                                :rules="campoRequerido"
+                                                dense
+                                                clearable
+                                                v-model="tab.fecha_baja_imss"  
+                                                label="Fecha baja IMSS" 
+                                                readonly
+                                                v-on="on"/>
+                                            </template>
+                                            <v-date-picker min-width="auto" v-model="tab.fecha_baja_imss" no-title @input="menubiFecha[index] = false" :disabled="!tab.fecha_alta_imss" :min="tab.fecha_alta_imss"/>
+                                          </v-menu>
+                                 	 </v-col>
+                                   
+                                 </v-row>
+                                 
+                                 <v-row>
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field label="Fonacot" :rules="campoRequerido" dense persistent-hint v-model="tab.fonacot"/>
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field label="Infonavit" :rules="campoRequerido" dense persistent-hint v-model="tab.infonavit"/>
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field label="Unidad Médica Familiar" :rules="campoRequerido" dense persistent-hint v-model="tab.unidad_medica_familiar"/>
+                                 	 </v-col>
+                                   
+                                 </v-row>
+                                 
+                                 <v-row>
+
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                                                        
+                                     <v-text-field 
+                                              type= "number" 
+                                              dir="rtl" 
+                                              :rules="salariosRules"
+                                              required
+                                              label="Salario Diario" 
+                                              dense
+                                              @change="modificacionSueldo()"
+                                              persistent-hint 
+                                              placeholder = "$" 
+                                              v-model="tab.sd"/>
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field type= "number" dir="rtl" :rules="salariosRules" required label="Salario Diario Integrado" dense persistent-hint placeholder = "$" v-model="tab.sdi"/>
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field  type= "number" dir="rtl" :rules="salariosRules" required label="Salario Base de Cotización" dense persistent-hint placeholder = "$" v-model="tab.sbc"/>
+                                 	 </v-col>
+                                 </v-row>
+                                 
+                                 <v-row>
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field
+                                              type= "number"
+                                              dir="rtl"
+                                              :rules="salariosRules"
+                                              required
+                                              label="Salario Mensual"
+                                              dense
+                                              persistent-hint
+                                              placeholder = "$"
+                                              v-model="tab.salario_mensual"/>
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-select
+                                                dense
+                                                clearable
+                                                :rules="inputRules"
+                                                required
+                                                label="Tipo de Jornada"
+                                                :items="tipo_jornada"
+                                                v-model="tab.tipo_jornada"
+                                                item-text="descripcion" 
+                                                item-value="clave"
+                                            />
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field label="CURP" :rules="inputRules" required dense persistent-hint v-model="tab.curp"/>
+                                 	 </v-col>
+                                   
+                                 </v-row>
+                                 
+                                 <v-row>
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-select
+                                              :rules="campoRequerido"
+                                              dense
+                                              clearable
+                                              label="Datos Fiscales"
+                                              :items="datos_fiscales"
+                                              v-model="tab.razon_social_id"
+                                              item-text="rfc" 
+                                             	item-value="id"
+                                            /> 
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-select
+                                              :rules="campoRequerido"
+                                              dense
+                                              clearable
+                                              label="Datos bancarios"
+                                              :items="datos_bancarios"
+                                              v-model="tab.contacto_cuenta_bancaria_id"
+                                              item-text="cuenta" 
+                                          		item-value="id"
+                                              
+                                            />
+                                 	 </v-col>
+                                   
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-select
+                                              :rules="campoRequerido"
+                                              dense
+                                              clearable
+                                              label="Formas de pago"
+                                              :items="formas_pago"
+                                              v-model="tab.forma_pago_id"
+                                              item-text="nombre"
+                                              item-value="id" 
+                                              
+                                            />
+                                 	 </v-col>
+                                   
+                                 </v-row>
+                                 
+                                 <v-row>
+                                   <v-col cols="12" sm="4" md="4" lg="4" xl="4">
+                                     <v-text-field label="N°. Seguro social" :rules="campoRequerido" dense persistent-hint v-model="tab.nss"/>
+                                 	 </v-col>
+                                 </v-row>
+                                 
+                                <v-row>
+																	<v-col>
+                                    <v-row>
+                                      <v-col>
+                                        <v-checkbox
+                                          :rules="campoRequerido"
+                                          dense
+                                          v-model="tab.contrato" 
+                                          label="Contrato"
+                                          color="success"
+                                          hide-details     
+                                        />   
+                                      </v-col>
+                                          <v-col  v-if="tab.contrato"  cols="12" xs="12" sm="4" md="8">
+                                            <v-select
+                                              :rules="inputRules"
+                                              required
+                                              dense
+                                              clearable
+                                              label="Tipo de Contrato"
+                                              :items="tipo_contrato"
+                                              v-model="tab.tipo_contrato"
+                                              item-text="descripcion" 
+                                              item-value="clave"
+                                            />                                           
+                                          
+                                          </v-col>
+                                      </v-row>
+                                    	<v-row>
+                                        <v-col>
+                                            <v-checkbox
+                                              dense
+                                              v-model="tab.tarjeta" 
+                                              label="Checa tarjeta"
+                                              color="success"
+                                            />
+                                        </v-col>
+                                      </v-row>
+                                    	<v-row>
+                                    	<v-col>
+                                          <v-checkbox
+                                            dense
+                                            v-model="tab.sindicalizado" 
+                                            label="Sindicalizado"
+                                            color="success"
+                                          />
+																			</v-col>
+                                      </v-row>
+                                    	<v-row>
+                                        <v-col>
+                                          <v-checkbox
+                                            dense
+                                            v-model="tab.declaracion_anual" 
+                                            label="Presenta declaración anual"
+                                            color="success"
+                                          />
+                                        </v-col>
+                                      </v-row>
+                                    	<v-row>
+                                        <v-col>
+                                          <v-checkbox
+                                            dense
+                                            v-model="tab.ptu" 
+                                            label="Incluir en PTU"
+                                            color="success"
+                                          />
+                                        </v-col>
+                                    </v-row>
+																		</v-col>
+                                  </v-row>
+                              </v-col>
+                           </v-row>
+                        	
+                      </v-container>
+											<v-card-actions>
+                        <v-spacer></v-spacer>
+                          <v-btn
+                            class="primary white--text float-right"
+                            @click="Guardar(index)"
+                          >Guardar</v-btn>
+
+                          <v-btn
+                            style="margin-right: 10px;"
+                            class="red white--text float-right"
+                            @click="Eliminar(index)"
+                            v-show="!isRemoveButtonHidden"
+                          >Eliminar</v-btn>
+                      </v-card-actions> 
+                    
+                      <!--Todo lo que sigue va debajo de los tabs-->
+                     </v-tab-item>
+                   </v-tabs-items>
+                  <v-btn v-bind:disabled="habilitar" icon x-large color="white" @click="addTab"><v-icon> mdi-plus</v-icon></v-btn>
+                </v-tabs>       	
+							</template>     
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-form>
+	  </v-card-text>  	
+  </v-card>
+</v-dialog>
+
+
+
+</s-template>
+<!--#SDK-->
+<script>
+
+
+
+
+props:[ 
+    'show',
+    'id',
+    'isNew',
+   	'permiso',
+  	'empleadoNominaId'
+	
+],
+data: () => ({
+  	
+    activeTab: 0,
+    tabs: [{
+        title:'Configuración 1', fecha_ingreso:'', fecha_alta_imss:'', fecha_baja_imss:'', fonacot:'', infonavit:'', sdi:'', sd:0, sbc:'', ptu:'',
+      	unidad_medica_familiar:'', tipo_jornada:'', contrato:'', tipo_contrato:'', salario_mensual:0, tarjeta:'', sindicalizado:'',declaracion_anual:'', registro_patronal:'',
+      	tipo_nomina_id:'', empresa_id:'', curp:'',contacto_cuenta_bancaria_id:'', razon_social_id:'', forma_pago_id:'',nss:''
+    },],
+  	contacto_id: 0,
+  	valor:[],
+  	indicadorCfdi:false,
+  	datos_bancarios:[],
+  	datos_fiscales:[],
+  	formas_pago:[],
+  	tipo_jornada:[],
+  	tipoContrato:[],
+  	tipo_nomina:[],
+  	tipo_nomina_id:[],
+  	tipo_nomina_nombre:[],
+  	tipo_nomina_cfdi:[],
+  	isRemoveButtonHidden: false,
+  	empresas:[],
+  	empresa_id:[],
+  	selectedOptions: [],
+  	items:[],
+  	isNewTab: false,
+		registroDefault: 0,
+    baseURL:"/empleado_nominas",
+    registroActual:{
+   		
+    },
+  	observadorGuardadoNuevo:-1,
+  	menuiFecha: false,
+  	menuaiFecha: false,
+  	menubiFecha: false,
+  	valorSugerido: '23',
+  	nuevo : false,
+  	habilitar: false,
+  	valid: true,
+  	campoRequeridoVacio:false,
+  	campoRequerido:[],
+    inputRules: [
+      v => !!v || "Este campo es requerido",
+      //v => (v && v.length >= 0) || "Debe contener al menos 8 caracteres"
+    ],
+  	salariosRules: [
+      v => !!v || "Este campo es requerido",
+      v => (v >= 0) || "Este campo debe ser un numero positivo",
+      v => !isNaN(v) || 'Debe ingresar un número',
+    ],
+  	
+}),
+  beforeMount() { 
+    this.getTiposNomina();
+  	this.getBancos();
+  	this.getFormasPago();
+  	this.getDatosFiscales();
+  }, 
+  mounted() {
+    this.getTiposJornada();
+    this.getTiposContrato();
+    this.getTiposNomina();
+    this.getFormasPago();
+    this.getDatosFiscales();
+    this.getBancos();
+    this.getEmpresas();
+    this.getTipoNominaShow(); 
+  },
+  
+  methods: {
+    onClose(){
+      this.habilitar =false;
+      this.isRemoveButtonHidden = false;
+      this.$emit('close');
+      this.tabs={};
+      this.$refs.form.resetValidation();
+    },
+    updateSelection(index) {
+      
+      	this.getTipoNominaShow();   
+      	this.tipo_nomina_cfdi=[];
+          for (var i=0; i<this.tabs.length;i++){
+              for(var j=0; j<this.tipo_nomina.length;j++){
+                if(this.tabs[i].tipo_nomina_id==this.tipo_nomina[j].id){
+                  this.tipo_nomina_cfdi.push(this.tipo_nomina[j].generar_cfdi);
+                } 
+              }
+
+        	}
+ 
+    },
+      
+    modificacionSueldo(){
+        this.tabs = this.tabs.map(i => i);
+       
+    },
+  	getTiposJornada(){
+      axios
+        .get(this.URL('empleados_nomina/tipo_jornada'))
+        .then(response => {
+            this.tipo_jornada = response.data;
+        })
+        .catch(error =>{
+        		console.log(error);
+        });
+
+    },
+    getEmpresas() {
+        axios
+            .get(this.URL('/empresas'))
+            .then(response => {
+                this.empresas = response.data
+            })
+      			.catch(error =>{
+        				console.log(error);
+       			 });
+
+    },
+    getTiposContrato(){
+      axios
+        .get(this.URL('empleados_nomina/tipo_contrato'))
+        .then(response => {
+            this.tipo_contrato = response.data;
+        })
+        .catch(error =>{
+        		console.log(error);
+        });
+
+    },
+      
+		getTiposNomina(){
+      axios
+        .get(this.URL('/tipos_nomina'))
+        .then(response => {
+            this.tipo_nomina = response.data;
+	
+        })
+        .catch(error =>{
+        		console.log(error);
+        });
+
+    },
+  
+    getBancos(){
+			axios
+				.get(this.URL('/contacto_cuenta_bancaria/'))
+				.then(response => { 
+						this.datos_bancarios = response.data; 
+        })
+				.catch(error =>{
+        		console.log(error);
+        });
+		},
+      
+    getDatosFiscales(){
+			axios
+				.get(this.URL('/razones_sociales'))
+				.then(response => { 
+						this.datos_fiscales = response.data; 
+        })
+				.catch(error =>{
+        		console.log(error);
+        });
+		},
+      
+    getFormasPago(){
+			axios
+				.get(this.URL('/formas_pago'))
+				.then(response => { 
+						this.formas_pago = response.data; 
+        })
+				.catch(error =>{
+        		console.log(error);
+        });
+		},
+      
+    addTab() {
+      
+      this.tabs.push({ title: 'Configuración' + " " + (this.tabs.length + 1) + '', contacto_id: this.id});
+      this.setActiveTab(this.tabs.length-1);     	
+     	this.isNewTab = true;
+      this.nuevo = true;
+      this.habilitar =true;
+      this.isRemoveButtonHidden = true;
+      this.activeTab = this.tabs.length-1;
+      this.observadorGuardadoNuevo=this.tabs.length-1;
+    },
+      
+    removeTab(index) {
+      
+      if(this.observadorGuardadoNuevo==index){
+        this.habilitar =false;
+        this.isRemoveButtonHidden = false;
+        this.tabs.splice(index, 1);
+      	if (index === this.activeTab) this.setActiveTab(0);
+        this.observadorGuardadoNuevo=-1;
+      }else{
+        this.observadorGuardadoNuevo=this.observadorGuardadoNuevo-1;
+        this.tabs.splice(index, 1);
+      	if (index === this.activeTab) this.setActiveTab(0);
+      }
+      
+      this.getTipoNominaShow(); 
+      
+      
+    },
+    setActiveTab(index) {
+      this.activeTab = this.tabs.length;
+      
+    },
+      
+    tabSueldo(){
+      
+     	for (let i = 0; i < this.tabs.length; i++) {
+          let e = this.tabs[i];
+          e.salario_mensual = e.sd * 30.4;
+      }
+     
+
+    },
+  
+    removeOption() {
+      var indexAreglo= this.tipo_nomina.findIndex(option => option.value === this.tabs.tipo_nomina_id);
+      this.tipo_nomina.splice(indexAreglo, 1);
+      this.getTiposNomina();  
+    },
+      
+    Guardar(index){
+ 			//console.log(this.campoRequeridoVacio);
+      this.registroActual = this.tabs[index];
+ 		  this.campoRequerido=[];
+      
+      if(this.tipo_nomina_cfdi[index] === true){
+         this.campoRequerido = [v => !!v || "Este campo es requerido"];
+         
+      }
+ 			  
+      /*for (let i = 0; i < this.campoRequerido.length; i++) {
+        
+        const campo = this.campoRequerido[i];
+        const isValid = this.$refs.form.validate(campo);
+        if (!isValid) {
+          this.campoRequeridoVacio = true;
+          break;
+        }
+ 				console.log(this.campoRequeridoVacio);
+      }*/
+     
+        
+      
+     if(this.$refs.form.validate()){
+      
+           if(this.nuevo == true &&  this.observadorGuardadoNuevo==index){
+              axios
+              .post(`${this.baseURL}?api_token=${sessionStorage.getItem("token")}`,this.registroActual)
+              .then(response => {
+
+                  this.$emit('add',response.data);
+                  this.registroActual = {};
+                  this.nuevo = false;
+                  this.isRemoveButtonHidden = false;
+                  this.habilitar = false;
+                	
+                  if(index==this.observadorGuardadoNuevo){
+                    this.observadorGuardadoNuevo=-1;
+                  }
+                  swal.fire({
+                    icon: "success",
+                    title: "Guardar",
+                    text: 'Se ha guardado con éxito'
+                  });
+                
+
+              }).catch(error => {
+
+                swal.fire({
+                    icon: "error",
+                    title: "Ooops!",
+                    text: 'Algo ha salido mal'
+                  });
+
+              });
+              }else{
+
+                axios
+                .put(this.URL('/empleado_nominas/'+`${this.registroActual.id}`),this.registroActual)
+                .then(response => {
+                    this.$emit('update',response.data.id);
+                    this.registroActual={};
+                    this.isRemoveButtonHidden = false;
+                  	
+                     swal.fire({
+                        icon: "success",
+                        title: "Guardar",
+                        text: 'Se ha editado con éxito'
+                      });
+              }).catch(error => {
+								this.habilitar = false;
+                swal.fire({
+                    icon: "error",
+                    title: "Ooops!",
+                    text: 'Algo ha salido mal'
+                  });
+
+              });
+
+            }
+        }
+      	
+    },
+
+
+    Eliminar(index) {
+      this.registroActual = this.tabs[index];
+      axios
+        .delete(this.URL(this.baseURL + '/' + this.registroActual.id))
+        .then(response => {
+              this.$emit('delete',response.data);
+              swal.fire({
+                icon: "success",
+                title: "Eliminar",
+                text: 'Se ha eliminado con éxito'
+             });
+        		 this.removeTab(this.tabs.id);
+        		this.getRegistro();
+        })
+        .catch(this.MSGBOX);
+      	
+
+    },
+    
+    getRegistro(){
+ 
+			if(this.id!=null){
+        axios
+        .get(this.URL(this.baseURL, '&contacto_id='+this.id)) 
+        .then(response => {  
+          this.tabs = response.data; 
+          
+          this.getTipoNominaShow();
+         
+        })
+          
+        .catch(this.MSGBOX);
+      }
+
+   	},
+    
+    getTipoNominaShow(){
+       this.tipo_nomina_nombre=[];
+          for (var i=0; i<this.tabs.length;i++){
+              for(var j=0; j<this.tipo_nomina.length;j++){
+                if(this.tabs[i].tipo_nomina_id==this.tipo_nomina[j].id){
+                  this.tipo_nomina_nombre.push(this.tipo_nomina[j].nombre);
+                } 
+              }
+
+        	}
+    }
+    
+  },
+    
+  
+    
+updated(){
+   
+    
+},
+  
+watch: { 
+  
+    show : function (){
+      if(!this.show) return;
+      this.tabs = {}; 
+      this.registroActual = {};
+      this.menuiFecha = [];
+      this.menuaiFecha = [];
+      this.menubiFecha = [];
+    	
+      
+      if(!this.isNew) {
+        this.getRegistro();
+        return;
+      }
+ 
+    },
+ 	
+  tabs: function(){
+    this.tabSueldo();
+  } 
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+<!--#SDK-->
+<style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+null
+
+
+
+
+
+
+
+
+
+
+
+
+
+</style><!--#SDK-->
